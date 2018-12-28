@@ -71,8 +71,34 @@ void build_APTA_from_file(string filepath) {
         }
         apta.nodes[current]->label = isAccepted ? LABEL_ACCEPTED : LABEL_REJECTED;
     }
+    in.close();
     LOG(INFO) << "...parsing examples = " << nofExamples << " / " << nofExamples;
     LOG(INFO) << "The APTA tree is built";
+}
+
+void verify_APTA_from_file(string filepath) {
+    LOG(INFO) << "Starting verification from the filepath: " << filepath;
+    // reads data from an input file
+    ifstream in(filepath); string line; getline(in, line); vector<int> data = split(line);
+    sofAlphabet = data[1];
+    int nofExamples = data[0];
+    LOG(INFO) << "The size of the alphabet = " << sofAlphabet;
+    for (int i = 0; i < nofExamples; ++i) {
+        getline(in, line); data = split(line);
+        int isAccepted = data[0];
+        int sofExample = data[1];
+        int current = 0;
+        for (int j = 0; j < sofExample; ++j) {
+            current = apta.nodes[current]->children[data[2 + j]];
+        }
+        bool isCorrect = (isAccepted == 1 && apta.nodes[current]->label == LABEL_ACCEPTED)
+            || (isAccepted == 0 && apta.nodes[current]->label == LABEL_REJECTED);
+        if (isCorrect) {
+            LOG(INFO) << "...example #" << i << " is correct";
+        } else {
+            LOG(ERROR) << "...example #" << i << " is incorrect!, DFA says this is " << apta.nodes[current]->label;
+        }
+    }
 }
 
 /**
@@ -87,14 +113,19 @@ void build_APTA_from_file(string filepath) {
  * 
  * Note that 0 is always the start state.
  */
-string get_dfa() {
+string get_dfa(bool log) {
     int map1[apta.nodes.size()]; // the states map
+    int visited[apta.nodes.size()]; // the states map
+    for (int i = 0; i < apta.nodes.size(); ++i) {
+        visited[i] = -1;
+    }
     int map2[apta.nodes.size()];
     vector<int> acceptedStates;
     vector<int> rejectedStates;
     int stateIndex = 0;
     queue<int> nodes;
     nodes.push(0); // add the root node
+    visited[0] = 1;
     while (nodes.empty() == false) {
         int node = nodes.front(); nodes.pop();
         map1[node] = stateIndex;
@@ -105,8 +136,9 @@ string get_dfa() {
         }
         map2[stateIndex++] = node;
         for (int i = 0; i < sofAlphabet; ++i) {
-            if (apta.nodes[node]->children[i] != NO_CHILD) {
+            if (apta.nodes[node]->children[i] != NO_CHILD && visited[apta.nodes[node]->children[i]] == -1) {
                 nodes.push(apta.nodes[node]->children[i]);
+                visited[apta.nodes[node]->children[i]] = 1;
             }
         }
     }
@@ -130,45 +162,107 @@ string get_dfa() {
             }
         }
     }
-    LOG(INFO) << "The number of states before EXBAR = " << apta.nodes.size();
-    LOG(INFO) << "The number of states after EXBAR = " << stateIndex;
+    if (log) {
+        LOG(INFO) << "The number of states before EXBAR = " << apta.nodes.size();
+        LOG(INFO) << "The number of states after EXBAR = " << stateIndex;
+    }
+    return output;
+}
+
+string get_yaml_dfa() {
+    int map1[apta.nodes.size()]; // the states map
+    int visited[apta.nodes.size()]; // the states map
+    for (int i = 0; i < apta.nodes.size(); ++i) {
+        visited[i] = -1;
+    }
+    int map2[apta.nodes.size()];
+    vector<int> acceptedStates;
+    vector<int> rejectedStates;
+    int stateIndex = 0;
+    queue<int> nodes;
+    nodes.push(0); // add the root node
+    visited[0] = 1;
+    while (nodes.empty() == false) {
+        int node = nodes.front(); nodes.pop();
+        map1[node] = stateIndex;
+        if (apta.nodes[node]->label == LABEL_ACCEPTED) {
+            acceptedStates.push_back(stateIndex);
+        } else if (apta.nodes[node]->label == LABEL_REJECTED) {
+            rejectedStates.push_back(stateIndex);
+        }
+        map2[stateIndex++] = node;
+        for (int i = 0; i < sofAlphabet; ++i) {
+            if (apta.nodes[node]->children[i] != NO_CHILD && visited[apta.nodes[node]->children[i]] == -1) {
+                nodes.push(apta.nodes[node]->children[i]);
+                visited[apta.nodes[node]->children[i]] = 1;
+            }
+        }
+    }
+    string output = "number of states: " + to_string(stateIndex) + "\nsize of alphabet: " + to_string(sofAlphabet) + "\n";
+    output += "accepting states: [";
+    for (int i = 0; i < acceptedStates.size(); ++i) {
+        output += (i == 0 ? "" : ", ") + to_string(acceptedStates[i]);
+    }
+    output += "]\nrejecting states: [";
+    for (int i = 0; i < rejectedStates.size(); ++i) {
+        output += (i == 0 ? "" : ", ") + to_string(rejectedStates[i]);
+    }
+    output += "]\ninitial state: 0\ntransitions:";
+    for (int i = 0; i < stateIndex; ++i) {
+        output += "\n- [" + to_string(i);
+        for (int j = 0; j < sofAlphabet; ++j) {
+            if (apta.nodes[map2[i]]->children[j] == NO_CHILD) {
+                output += ", -1";
+            } else {
+                output += ", " + to_string(map1[apta.nodes[map2[i]]->children[j]]);
+            }
+        }
+        output += "]";
+    }
     return output;
 }
 
 void print_dfa() {
-    cout << get_dfa() << endl;
+    string dfa = get_dfa(true);
+    cout << "The current DFA:\n" << dfa << endl;
 }
 
 // The changes stack handles all changes that can be reverted
 stack<tuple<int, string, int, int>> changes;
 
-void set_label(int nodeIndex, int label) {
+int set_label(int nodeIndex, int label) {
     changes.push(make_tuple(nodeIndex, "label", apta.nodes[nodeIndex]->label, -1));
     apta.nodes[nodeIndex]->label = label;
+    return 1;
 }
 
-void set_child(int nodeIndex, int letter, int child) {
+int set_child(int nodeIndex, int letter, int child) {
     changes.push(make_tuple(nodeIndex, "child", apta.nodes[nodeIndex]->children[letter], letter));
     apta.nodes[nodeIndex]->children[letter] = child;
+    return 1;
 }
 
-void set_father_point(int redIndex, int blueIndex) {
+int set_father_point(int redIndex, int blueIndex) {
+    int nofChanges = 0;
     for (int i = 0; i < apta.nodes.size(); ++i) {
         for (int j = 0; j < sofAlphabet; ++j) {
             if (apta.nodes[i]->children[j] == blueIndex) {
                 set_child(i, j, redIndex);
+                nofChanges++;
             }
         }
     }
+    return nofChanges;
 }
 
-void undo_changes() {
-    while (changes.empty() == false) {
+void undo_changes(int nofChanges) {
+    while (nofChanges > 0) {
         tuple<int, string, int, int> change = changes.top(); changes.pop();
         if (get<1>(change) == "label") {
             apta.nodes[get<0>(change)]->label = get<2>(change);
         } else if (get<1>(change) == "child") {
             apta.nodes[get<0>(change)]->children[get<3>(change)] = get<2>(change);
         }
+        nofChanges--;
     }
 }
