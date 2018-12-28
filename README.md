@@ -58,7 +58,7 @@ Przykład 2:
 
 ## Format pliku wyściowego
 
-Program generuje zminimalizowany DFA do dwóch plików wyjściowych różniących się formatem.
+Program generuje zminimalizowany DFA do dwóch plików wyjściowych różniących się formatem - pliki nazywają się `dfa.txt` oraz `dfa.yaml`.
 
 ### Pierwszy format (txt)
 
@@ -96,4 +96,10 @@ transitions:
 - [0, 1, 1]
 - [1, 0, 2]
 - [2, 2, 0]
+```
+
+## Szybki start
+
+```
+g++ exbar.cpp libraries/easylogging/easylogging++.cc -std=c++11 -DELPP_DISABLE_DEBUG_LOGS && ./a.out --file samples/sample1.txt
 ```
