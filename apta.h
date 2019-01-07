@@ -15,14 +15,24 @@ const int LABEL_NONE = 0;
 
 const int NO_CHILD = -1;
 
+const int COLOR_RED = 1;
+const int COLOR_BLUE = -1;
+const int COLOR_NONE = 0;
+const int COLOR_MERGED = 2;
+
 int sofAlphabet; // the size of the alphabet
+int nofRedNodes = 0; // the number of red nodes
+int nofBlueNodes = 0; // the number of blue nodes
+
+vector<int> redNodes;
 
 struct Node {
     int index;
     int label;
+    int color;
     vector<int> children;
     Node(int _index, int _label) {
-        index = _index; label = _label;
+        index = _index; label = _label; color = COLOR_NONE;
         for (int i = 0; i < sofAlphabet; ++i) {
             children.push_back(NO_CHILD);
         }
@@ -44,19 +54,22 @@ struct APTA {
  * The alphabet need to encoded with numbers.
  */
 void build_APTA_from_file(string filepath) {
-    LOG(INFO) << "Starting reading from the filepath: " << filepath;
     // reads data from an input file
+    LOG(INFO) << "[ APTA ]";
+    LOG(INFO) << "Bulding the APTA from the file: " << filepath;
     ifstream in(filepath); string line; getline(in, line); vector<int> data = split(line);
+    if (in.good() == false) {
+        LOG(ERROR) << "The file cannot be found or read";
+        exit(1);
+    }
     sofAlphabet = data[1];
     int nofExamples = data[0];
+    LOG(INFO) << "The number of examples = " << nofExamples;
     LOG(INFO) << "The size of the alphabet = " << sofAlphabet;
     // creates the root node
     Node* root = new Node(0, LABEL_NONE);
     apta.nodes.push_back(root);
     for (int i = 0; i < nofExamples; ++i) {
-        if (i % 1000 == 0) {
-            LOG(INFO) << "...parsing examples = " << i << " / " << nofExamples;
-        }
         getline(in, line); data = split(line);
         int isAccepted = data[0];
         int sofExample = data[1]; // the size of example
@@ -72,17 +85,15 @@ void build_APTA_from_file(string filepath) {
         apta.nodes[current]->label = isAccepted ? LABEL_ACCEPTED : LABEL_REJECTED;
     }
     in.close();
-    LOG(INFO) << "...parsing examples = " << nofExamples << " / " << nofExamples;
-    LOG(INFO) << "The APTA tree is built";
+    LOG(INFO) << "The APTA is completed";
 }
 
 void verify_APTA_from_file(string filepath) {
-    LOG(INFO) << "Starting verification from the filepath: " << filepath;
+    LOG(INFO) << "Verification of the generated DFA";
     // reads data from an input file
     ifstream in(filepath); string line; getline(in, line); vector<int> data = split(line);
     sofAlphabet = data[1];
     int nofExamples = data[0];
-    LOG(INFO) << "The size of the alphabet = " << sofAlphabet;
     for (int i = 0; i < nofExamples; ++i) {
         getline(in, line); data = split(line);
         int isAccepted = data[0];
@@ -94,11 +105,12 @@ void verify_APTA_from_file(string filepath) {
         bool isCorrect = (isAccepted == 1 && apta.nodes[current]->label == LABEL_ACCEPTED)
             || (isAccepted == 0 && apta.nodes[current]->label == LABEL_REJECTED);
         if (isCorrect) {
-            LOG(INFO) << "...example #" << i << " is correct";
+            LOG(INFO) << "Example #" << i << " is correct";
         } else {
-            LOG(ERROR) << "...example #" << i << " is incorrect!, DFA says this is " << apta.nodes[current]->label;
+            LOG(ERROR) << "Example #" << i << " is incorrect!, DFA says this is " << apta.nodes[current]->label;
         }
     }
+    in.close();
 }
 
 /**
@@ -163,8 +175,8 @@ string get_dfa(bool log) {
         }
     }
     if (log) {
-        LOG(INFO) << "The number of states before EXBAR = " << apta.nodes.size();
-        LOG(INFO) << "The number of states after EXBAR = " << stateIndex;
+        LOG(INFO) << "The number of states before `exbar` = " << apta.nodes.size();
+        LOG(INFO) << "The number of states after `exbar` = " << stateIndex;
     }
     return output;
 }
@@ -247,10 +259,37 @@ int set_father_point(int redIndex, int blueIndex) {
     for (int i = 0; i < apta.nodes.size(); ++i) {
         for (int j = 0; j < sofAlphabet; ++j) {
             if (apta.nodes[i]->children[j] == blueIndex) {
-                set_child(i, j, redIndex);
-                nofChanges++;
+                nofChanges += set_child(i, j, redIndex);
             }
         }
+    }
+    return nofChanges;
+}
+
+int set_color(int nodeIndex, int color, bool canBeReverted) {
+    if (canBeReverted) {
+        changes.push(make_tuple(nodeIndex, "color", apta.nodes[nodeIndex]->color, -1));
+    }
+    int nofChanges = 1;
+    if (apta.nodes[nodeIndex]->color == COLOR_RED) {
+        nofRedNodes--;
+    }
+    if (apta.nodes[nodeIndex]->color == COLOR_BLUE) {
+        nofBlueNodes--;
+    }
+    apta.nodes[nodeIndex]->color = color;
+    LOG(DEBUG) << "The node #" << nodeIndex << "'s color has been changed into " << (color == COLOR_RED ? "RED" : (color == COLOR_BLUE ? "BLUE" : "MERGED"));
+    if (color == COLOR_RED) {
+        nofRedNodes++;
+        redNodes.push_back(nodeIndex);
+        for (int i = 0; i < sofAlphabet; ++i) {
+            int child = apta.nodes[nodeIndex]->children[i];
+            if (child != NO_CHILD && apta.nodes[child]->color == COLOR_NONE) {
+                nofChanges += set_color(child, COLOR_BLUE, canBeReverted);
+            }
+        }
+    } else if (color == COLOR_BLUE) {
+        nofBlueNodes++;
     }
     return nofChanges;
 }
@@ -260,9 +299,42 @@ void undo_changes(int nofChanges) {
         tuple<int, string, int, int> change = changes.top(); changes.pop();
         if (get<1>(change) == "label") {
             apta.nodes[get<0>(change)]->label = get<2>(change);
+        } else if (get<1>(change) == "color") {
+            set_color(get<0>(change), get<2>(change), false);
         } else if (get<1>(change) == "child") {
             apta.nodes[get<0>(change)]->children[get<3>(change)] = get<2>(change);
         }
         nofChanges--;
     }
+}
+
+int getNumberOfPossibleMerges(int label) {
+    int nofPossibleMerges = 0;
+    for (int i = 0; i < redNodes.size(); ++i) {
+        if (apta.nodes[redNodes[i]]->label == LABEL_NONE || apta.nodes[redNodes[i]]->label == label) {
+            nofPossibleMerges++;
+        }
+    }
+    return nofPossibleMerges;
+}
+
+int pickBlueNode(int nofPossibleMerges) {
+    if (nofBlueNodes == 0) {
+        return -1;
+    }
+    for (int i = 0; i < apta.nodes.size(); ++i) {
+        if (apta.nodes[i]->color != COLOR_BLUE) {
+            continue;
+        }
+        int localNofPossibleMerges = getNumberOfPossibleMerges(apta.nodes[i]->label);
+        if (localNofPossibleMerges > nofPossibleMerges) {
+            continue;
+        }
+        if (localNofPossibleMerges == 0) {
+            set_color(i, COLOR_RED, true);
+            continue;
+        }
+        return i;
+    }
+    return pickBlueNode(nofPossibleMerges + 1);
 }
