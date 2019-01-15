@@ -42,6 +42,9 @@ struct APTA {
  * 0 3 1 0 0
  * 0 1 0
  * The alphabet need to encoded with numbers.
+ * 
+ * The APTA tree constains nodes (as a vector). A node contains the index (corresponding to the nodes' vector), the label and children, which is a vector of indices.
+ * The number of children is fixed and equals to the size of the alphabet.
  */
 void build_APTA_from_file(string filepath) {
     LOG(INFO) << "Starting reading from the filepath: " << filepath;
