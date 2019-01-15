@@ -47,32 +47,30 @@ bool try_merge(int redNode, int blueNode, int &nofChanges) {
 int maxRed = 1;
 
 void exh_search() {
-    if (nofRedNodes <= maxRed) {
+    if (getNumberOfRedNodex() <= maxRed) {
         nofSearchingCalls++;
-        if (nofBlueNodes == 0) {
-            throw 1;
-        } else {
-            int blueNode = pickBlueNode(0);
-            LOG(DEBUG) << "The blue node has been picked: node #" << blueNode;
-            if (blueNode != -1) {
-                for (int j = 0; j < redNodes.size(); ++j) {
+        LOG(DEBUG) << "Looking for the best possible blue node";
+        int blueNode = pickBlueNode(0);
+        LOG(DEBUG) << "The blue node has been picked: node #" << blueNode;
+        if (blueNode != -1) {
+            for (int i = 0; i < apta.nodes.size(); ++i) { // try all red nodes
+                if (apta.nodes[i]->color == COLOR_RED) {
                     int nofChanges = 0;
-                    nofChanges += set_color(blueNode, COLOR_MERGED, true);
-                    if (try_merge(redNodes[j], blueNode, nofChanges)) {
-                        LOG(DEBUG) << "Recolor the red node in order to color new blue nodes";
-                        nofChanges += set_color(redNodes[j], COLOR_RED, true);
-                        getchar();
+                    if (try_merge(i, blueNode, nofChanges)) {
+                        //getchar();
                         LOG(DEBUG) << "Recurse call after the merge";
                         exh_search();
                     }
                     LOG(DEBUG) << "Reverting changes";
                     undo_changes(nofChanges);
                 }
-                LOG(DEBUG) << "No merge possible for the picked blue node";
-                set_color(blueNode, COLOR_RED, true);
-                getchar();
-                exh_search();
             }
+            LOG(DEBUG) << "No merge possible for the picked blue node";
+            apta.nodes[blueNode]->color = COLOR_RED;
+            //getchar();
+            exh_search();
+        } else { // no more blue nodes
+            throw 1;
         }
     }
 }
@@ -87,7 +85,7 @@ int main(int argc, char* argv[])
     LOG(INFO) << "[ exbar ]";
     //---
     clock_t time = clock();
-    set_color(0, COLOR_RED, true);
+    apta.nodes[0]->color = COLOR_RED;
     while (true) {
         try {
             exh_search();
