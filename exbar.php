@@ -43,6 +43,7 @@ foreach (array_slice($lines, 1) as $example) {
 /* This part contains helper functions */
 
 $nofPossibleMerges = [];
+$changesHistory = [];
 
 function getNofRedNodes() {
     global $apta;
@@ -65,19 +66,56 @@ function updateNofPossibleMerges() {
     }
 }
 
+function setLabel($nodeIdx, $label) {
+    global $apta, $changesHistory;
+    $changesHistory[] = ['label', $nodeIdx, $apta[$nodeIdx]['label']];
+    $apta[$nodeIdx]['label'] = $label;
+}
+
+function setChild($nodeIdx, $childIdx, $child) {
+    global $apta, $changesHistory;
+    $changesHistory[] = ['child', $nodeIdx, $childIdx, $apta[$nodeIdx]['children'][$childIdx]];
+    $apta[$nodeIdx]['children'][$childIdx] = $child;
+}
+
+function setFatherPoint($blueNode, $redNode) {
+    global $apta, $sofAlphabet;
+    for ($i = 0; $i < count($apta); ++$i) {
+        for ($j = 0; $j < $sofAlphabet; ++$j) {
+            if ($apta[$i]['children'] == $blueNode) {
+                setChild($i, $j, $redNode);
+            }
+        }
+    }
+}
+
+function revertChanges() {
+    global $apta, $changesHistory;
+    foreach ($changesHistory as $change) {
+        if ($change[0] === 'label') {
+            $apta[$change[1]]['label'] = $change[2];
+        } else if ($change[0] === 'child') {
+            $apta[$change[1]]['children'][$change[2]] = $change[3];
+        }
+    }
+}
+
 /* This part contains the EXBAR algorithm */
 
 $maxNofRedNodes = 1;
 
 function pickBlueNode($cutoff = 0) {
     global $apta, $nofPossibleMerges;
-    $blueNodes = array_unique(array_reduce($pata, function ($carry, $node) {
+    $blueNodes = array_unique(array_reduce($apta, function ($carry, $node) {
         return array_merge($carry, $node['color'] !== COLOR_RED ? [] : array_filter($node['children'], function ($child) { return $child !== NO_CHILD; }));
     }, []));
-    if (count(blueNodes) === 0) {
+    if (count($blueNodes) === 0) {
         return [$cutoff, -1];
     }
     foreach ($blueNodes as $nodeIdx) {
+        if ($apta[$nodeIdx]['color'] !== COLOR_NONE) {
+            continue;
+        }
         if ($nofPossibleMerges[$apta[$nodeIdx]['label']] > $cutoff) {
             continue;
         }
@@ -86,19 +124,82 @@ function pickBlueNode($cutoff = 0) {
     return pickBlueNode($cutoff + 1);
 }
 
+function walkit($blueNode, $redNode) {
+    global $apta, $sofAlphabet;
+    if ($apta[$blueNode]['label'] !== LABEL_NONE) {
+        if ($apta[$redNode]['label'] !== LABEL_NONE) {
+            if ($apta[$blueNode]['label'] !== $apta[$redNode]['label']) {
+                throw new Exception();
+            }
+        } else {
+            setLabel($redNode, $apta[$blueNode]['label']);
+        }
+    }
+    for ($i = 0; $i < $sofAlphabet; ++$i) {
+        if ($apta[$blueNode]['children'][$i] !== NO_CHILD) {
+            if ($apta[$redNode]['children'][$i] !== NO_CHILD) {
+                walkit($apta[$blueNode]['children'][$i], $apta[$redNode]['children'][$i]);
+            } else {
+                setChild($redNode, $i, $apta[$blueNode]['children'][$i]);
+            }
+        }
+    }
+}
+
+function tryMerge($blueNode, $redNode) {
+    global $changesHistory;
+    $changesHistory = [];
+    setFatherPoint($blueNode, $redNode);
+    try {
+        walkit($blueNode, $redNode);
+    } catch (Exception $exception) {
+        echo '[MERGE FAILED REVERTED CHANGES]' . PHP_EOL;
+        revertChanges();
+        return false;
+    }
+    return true;
+}
+
 function exbarSearch() {
     global $apta, $maxNofRedNodes;
-    if (getNofRedNodes() <= $maxNofRedNodes) {
-        list($cutoff, $blueNode) = pickBlueNode();
-        if ($blueNode === -1) {
-            throw new Exception();
-        }
-        if ($cutoff === 0) {
-            $apta[$blueNode]['color'] = COLOR_RED;
+    echo '[EXBAR] No. red nodes: ' . getNofRedNodes() . ', max. no. red nodes: ' . $maxNofRedNodes . PHP_EOL;
+    if (getNofRedNodes() > $maxNofRedNodes) {
+        return;
+    }
+    list($cutoff, $blueNode) = pickBlueNode();
+    echo '[BLUE NODE] The picked node: ' . $blueNode . PHP_EOL;
+    if ($blueNode === -1) {
+        throw new Exception();
+    }
+    if ($cutoff === 0) {
+        echo '[RECOLOR] The new red node: ' . $blueNode . PHP_EOL;
+        $apta[$blueNode]['color'] = COLOR_RED;
+        exbarSearch();
+        return;
+    }
+    $redNodes = array_filter($apta, function ($node) { return $node['color'] === COLOR_RED; });
+    foreach (array_keys($redNodes) as $redNode) {
+        echo '[MERGE] The red node: ' . $redNode . PHP_EOL;
+        if (tryMerge($blueNode, $redNode)) {
+            echo '[MERGE COMPLETED]' . PHP_EOL;
             exbarSearch();
             return;
         }
-        
     }
+    echo '[RECOLOR] The new red node: ' . $blueNode . PHP_EOL;
+    $apta[$blueNode]['color'] = COLOR_RED;
     return;
 }
+
+$limit = 4;
+while (--$limit > 0) {
+    try {
+        updateNofPossibleMerges();
+        exbarSearch();
+        $maxNofRedNodes++;
+    } catch (Exception $exception) {
+        echo '[END]' . PHP_EOL;
+        break;
+    }
+}
+
