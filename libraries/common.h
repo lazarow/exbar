@@ -1,8 +1,11 @@
 #include <vector>
 #include <string>
+#include <fstream>
+
 using namespace std;
 
-vector<int> split(string input) {
+vector<int> split(string input)
+{
     string buffer = "";
     vector<int> output;
     for (int i = 0; i < input.length(); ++i) {
@@ -19,7 +22,8 @@ vector<int> split(string input) {
     return output;
 }
 
-string print_vector(vector<int> input) {
+string printVector(vector<int> input)
+{
     string output = "";
     for (int i = 0; i < input.size(); ++i) {
         output += (i == 0 ? "" : " ") + to_string(input[i]);
@@ -27,7 +31,8 @@ string print_vector(vector<int> input) {
     return output;
 }
 
-char* getCmdOption(char ** begin, char ** end, const string & option) {
+char* getCmdOption(char ** begin, char ** end, const string & option)
+{
     char ** itr = find(begin, end, option);
     if (itr != end && ++itr != end) {
         return *itr;
@@ -35,6 +40,14 @@ char* getCmdOption(char ** begin, char ** end, const string & option) {
     return 0;
 }
 
-bool cmdOptionExists(char** begin, char** end, const string& option) {
+bool cmdOptionExists(char** begin, char** end, const string& option)
+{
     return find(begin, end, option) != end;
+}
+
+vector<int> getdata(ifstream in)
+{
+    string line;
+    getline(in, line);
+    return split(line);
 }

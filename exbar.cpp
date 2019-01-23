@@ -9,6 +9,8 @@ INITIALIZE_EASYLOGGINGPP
 int nofMergeTries = 0; // the number of merging tries
 int nofSearchingCalls = 0; // the number of `exh_search` calls
 
+std::ofstream graphmlOut("test.graphml");
+
 void walkit(int redNode, int blueNode, int &nofChanges)
 {
     if (apta.nodes[blueNode]->label != LABEL_NONE) {
@@ -47,7 +49,7 @@ bool try_merge(int redNode, int blueNode, int &nofChanges) {
 int maxRed = 1;
 
 void exh_search() {
-    if (getNumberOfRedNodex() <= maxRed) {
+    if (getNumberOfRedNodes() <= maxRed) {
         nofSearchingCalls++;
         LOG(DEBUG) << "Looking for the best possible blue node";
         int blueNode = pickBlueNode(0);
@@ -83,6 +85,7 @@ int main(int argc, char* argv[])
     string filepath = getCmdOption(argv, argv + argc, "--file");
     build_APTA_from_file(filepath);
     LOG(INFO) << "[ exbar ]";
+    graphmlOut << get_graphml_header();
     //---
     clock_t time = clock();
     apta.nodes[0]->color = COLOR_RED;
@@ -105,6 +108,9 @@ int main(int argc, char* argv[])
     print_dfa();
     //---
     LOG(INFO) << "Saving the generated DFA to files";
+    graphmlOut << get_graphml_dfa();
+    graphmlOut << get_graphml_footer();
+    graphmlOut.close();
     std::ofstream out1("dfa.txt");
     out1 << get_dfa(false);
     out1.close();

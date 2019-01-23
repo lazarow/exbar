@@ -19,6 +19,7 @@ const int COLOR_RED = 1;
 const int COLOR_NONE = 0;
 
 int sofAlphabet; // the size of the alphabet
+int graphmlDFA = 1;
 
 struct Node {
     int index;
@@ -231,6 +232,42 @@ string get_yaml_dfa() {
     return output;
 }
 
+string get_graphml_header() {
+    string graphml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:y=\"http://www.yworks.com/xml/graphml\" xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns http://www.yworks.com/xml/schema/graphml/1.0/ygraphml.xsd\">";
+    graphml += "\n<key for=\"node\" id=\"d0\" yfiles.type=\"nodegraphics\"/>\n";
+    graphml += "<key for=\"edge\" id=\"d0\" yfiles.type=\"edgegraphics\"/>\n";
+    return graphml;
+}
+
+string get_graphml_footer() {
+    string graphml = "</graphml>";
+    return graphml;
+}
+
+string get_graphml_dfa() {
+    string graphml = "\n<graph id=\"dfa" + to_string(graphmlDFA++) + "\" edgedefault=\"directed\">\n";
+    for (int i = 0; i < apta.nodes.size(); ++i) {
+        graphml += "<node id=\"n" + to_string(i) + "\"><data key=\"d0\"><y:ShapeNode><y:NodeLabel>"
+            + to_string(i) +"</y:NodeLabel>"
+            + "<y:BorderStyle color=\"#000000\" type=\"dashed\" width=\"1.0\"/>"
+            + "<y:Fill color=\"" + (apta.nodes[i]->label == LABEL_NONE ? "#FDE0A4" : (apta.nodes[i]->label == LABEL_ACCEPTED ? "#CDDFA3" : "#E9968E"))
+            + "\" transparent=\"false\"/></y:ShapeNode></data></node>\n";
+    }
+    int edge = 0;
+    for (int i = 0; i < apta.nodes.size(); ++i) {
+        for (int j = 0; j < sofAlphabet; ++j) {
+            if (apta.nodes[i]->children[j] != NO_CHILD) {
+                graphml += "<edge id=\"e" + to_string(edge++) + "\" source=\"n"
+                    +  to_string(i) + "\" target=\"n"
+                    +  to_string(apta.nodes[i]->children[j]) + "\">"
+                    + "<data key=\"d0\"><y:PolyLineEdge><y:EdgeLabel>" + to_string(j) + "</y:EdgeLabel></y:PolyLineEdge></data></edge>\n";
+            }
+        }
+    }
+    graphml += "</graph>\n";
+    return graphml;
+}
+
 void print_dfa() {
     string dfa = get_dfa(true);
     cout << "The current DFA:\n" << dfa << endl;
@@ -289,7 +326,7 @@ int getNumberOfPossibleMerges(int label) {
     return nofPossibleMerges;
 }
 
-int getNumberOfRedNodex() {
+int getNumberOfRedNodes() {
     int nofRedNodes = 0;
     for (int i = 0; i < apta.nodes.size(); ++i) {
         if (apta.nodes[i]->color == COLOR_RED) {
@@ -320,11 +357,11 @@ int pickBlueNode(int nofPossibleMerges) {
         if (localNofPossibleMerges > nofPossibleMerges) {
             continue;
         }
-        if (localNofPossibleMerges == 0) {
+        /*if (localNofPossibleMerges == 0) {
             LOG(DEBUG) << "The blue node cannot be merged so it will be color as RED: node #" << blueNodes[i];
             apta.nodes[blueNodes[i]]->color = COLOR_RED; // marks nodes with 0 possible merges as RED (pernament)
             continue;
-        }
+        }*/
         return blueNodes[i];
     }
     return pickBlueNode(nofPossibleMerges + 1);
