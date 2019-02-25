@@ -25,9 +25,13 @@ struct Node {
     int index;
     int label; // accepted or rejected
     int color; // red or none
+    bool isMerged;
     vector<int> children;
     Node(int _index, int _label) {
-        index = _index; label = _label; color = COLOR_NONE;
+        index = _index;
+        label = _label;
+        color = COLOR_NONE;
+        isMerged = false;
         for (int i = 0; i < sofAlphabet; ++i) {
             children.push_back(NO_CHILD);
         }
@@ -292,6 +296,12 @@ int set_child(int nodeIndex, int letter, int child) {
     return 1;
 }
 
+int set_as_merged(int nodeIndex) {
+    changes.push(make_tuple(nodeIndex, "merged", -1, -1));
+    apta.nodes[nodeIndex]->isMerged = true;
+    return 1;
+}
+
 int set_father_point(int redIndex, int blueIndex) {
     int nofChanges = 0;
     for (int i = 0; i < apta.nodes.size(); ++i) {
@@ -311,19 +321,11 @@ void undo_changes(int nofChanges) {
             apta.nodes[get<0>(change)]->label = get<2>(change);
         } else if (get<1>(change) == "child") {
             apta.nodes[get<0>(change)]->children[get<3>(change)] = get<2>(change);
+        } else if (get<1>(change) == "merged") {
+            apta.nodes[get<0>(change)]->isMerged = false;
         }
         nofChanges--;
     }
-}
-
-int getNumberOfPossibleMerges(int label) {
-    int nofPossibleMerges = 0;
-    for (int i = 0; i < apta.nodes.size(); ++i) {
-        if (apta.nodes[i]->color == COLOR_RED && (apta.nodes[i]->label == LABEL_NONE || apta.nodes[i]->label == label)) {
-            nofPossibleMerges++;
-        }
-    }
-    return nofPossibleMerges;
 }
 
 int getNumberOfRedNodes() {
@@ -334,35 +336,4 @@ int getNumberOfRedNodes() {
         }
     }
     return nofRedNodes;
-}
-
-int pickBlueNode(int nofPossibleMerges) {
-    LOG(DEBUG) << "...possible merges: " << nofPossibleMerges;
-    vector<int> blueNodes;
-    for (int i = 0; i < apta.nodes.size(); ++i) {
-        if (apta.nodes[i]->color == COLOR_RED) {
-            for (int j = 0; j < apta.nodes[i]->children.size(); ++j) {
-                int child = apta.nodes[i]->children[j];
-                if (child != NO_CHILD && apta.nodes[child]->color == COLOR_NONE && find(blueNodes.begin(), blueNodes.end(), child) == blueNodes.end()) {
-                    blueNodes.push_back(child);
-                }
-            }
-        }
-    }
-    if (blueNodes.size() == 0) {
-        return -1;
-    }
-    for (int i = 0; i < blueNodes.size(); ++i) {
-        int localNofPossibleMerges = getNumberOfPossibleMerges(apta.nodes[blueNodes[i]]->label);
-        if (localNofPossibleMerges > nofPossibleMerges) {
-            continue;
-        }
-        /*if (localNofPossibleMerges == 0) {
-            LOG(DEBUG) << "The blue node cannot be merged so it will be color as RED: node #" << blueNodes[i];
-            apta.nodes[blueNodes[i]]->color = COLOR_RED; // marks nodes with 0 possible merges as RED (pernament)
-            continue;
-        }*/
-        return blueNodes[i];
-    }
-    return pickBlueNode(nofPossibleMerges + 1);
 }

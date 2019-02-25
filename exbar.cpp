@@ -1,12 +1,12 @@
 #include<vector>
 #include<algorithm>
 #include<chrono>
+#include<climits>
 #include "apta.h"
 using namespace std;
 
 INITIALIZE_EASYLOGGINGPP
 
-int nofMergeTries = 0; // the number of merging tries
 int nofSearchingCalls = 0; // the number of `exh_search` calls
 
 std::ofstream graphmlOut("test.graphml");
@@ -34,32 +34,78 @@ void walkit(int redNode, int blueNode, int &nofChanges)
 }
 
 bool try_merge(int redNode, int blueNode, int &nofChanges) {
-    nofMergeTries++;   
     nofChanges += set_father_point(redNode, blueNode); // creates loops
     try {
         walkit(redNode, blueNode, nofChanges);
     } catch (int e) {
-        LOG(DEBUG) << "[-] The red node and blue node has not been merged: red node #" << redNode << ", blue node #" << blueNode;
+        //LOG(DEBUG) << "[-] The red node and blue node has not been merged: red node #" << redNode << ", blue node #" << blueNode;
         return false;
     }
-    LOG(DEBUG) << "[+] The red node and blue node has been merged: red node #" << redNode << ", blue node #" << blueNode;
+    //LOG(DEBUG) << "[+] The red node and blue node has been merged: red node #" << redNode << ", blue node #" << blueNode;
     return true;
 }
 
+int pickBlueNode() {
+    vector<int> redNodes;
+    vector<int> blueNodes;
+    for (int i = 0; i < apta.nodes.size(); ++i) {
+        if (apta.nodes[i]->color == COLOR_RED) {
+            redNodes.push_back(i);
+            for (int j = 0; j < apta.nodes[i]->children.size(); ++j) {
+                int child = apta.nodes[i]->children[j];
+                if (
+                    child != NO_CHILD
+                    && apta.nodes[child]->color == COLOR_NONE
+                    && apta.nodes[child]->isMerged == false
+                    && find(blueNodes.begin(), blueNodes.end(), child) == blueNodes.end()
+                ) {
+                    blueNodes.push_back(child);
+                }
+            }
+        }
+    }
+    if (blueNodes.size() == 0) {
+        return -1;
+    }
+    int bestNofPossibleMerges = INT_MAX;
+    int bestBlueNode = -1;
+    for (int i = 0; i < blueNodes.size(); ++i) {
+        int nofPossibleMerges = 0;
+        for (int j = 0; j < redNodes.size(); ++j) {
+            int nofChanges = 0;
+            if (try_merge(redNodes[j], blueNodes[i], nofChanges)) {
+                nofPossibleMerges++;
+            }
+            undo_changes(nofChanges);
+        }
+        LOG(DEBUG) << "The number of possible merge for node #" << blueNodes[i] << ": " << nofPossibleMerges;
+        if (nofPossibleMerges < bestNofPossibleMerges) {
+            bestBlueNode = blueNodes[i];
+            bestNofPossibleMerges = nofPossibleMerges;
+        }
+    }
+    return bestBlueNode;
+}
+
 int maxRed = 1;
+int bestSolutionNofRedNodes = INT_MAX;
+string solutionDfa = "";
 
 void exh_search() {
     if (getNumberOfRedNodes() <= maxRed) {
         nofSearchingCalls++;
         LOG(DEBUG) << "Looking for the best possible blue node";
-        int blueNode = pickBlueNode(0);
+        //getchar();
+        int blueNode = pickBlueNode();
         LOG(DEBUG) << "The blue node has been picked: node #" << blueNode;
+        //getchar();
         if (blueNode != -1) {
             for (int i = 0; i < apta.nodes.size(); ++i) { // try all red nodes
                 if (apta.nodes[i]->color == COLOR_RED) {
                     int nofChanges = 0;
                     if (try_merge(i, blueNode, nofChanges)) {
                         //getchar();
+                        nofChanges += set_as_merged(blueNode);
                         LOG(DEBUG) << "Recurse call after the merge";
                         exh_search();
                     }
@@ -73,6 +119,13 @@ void exh_search() {
             exh_search();
         } else { // no more blue nodes
             throw 1;
+            // save the solution
+            /*if (getNumberOfRedNodes() < bestSolutionNofRedNodes) {
+                LOG(INFO) << "The solution has been found";
+                getchar();
+                bestSolutionNofRedNodes = getNumberOfRedNodes();
+                solutionDfa = get_dfa(false);
+            }*/
         }
     }
 }
@@ -102,7 +155,6 @@ int main(int argc, char* argv[])
     int ms = time / CLOCKS_PER_SEC * 1000;
     //---
     LOG(INFO) << "[ RESULT ]";
-    LOG(INFO) << "The number of merge tries = " << nofMergeTries;
     LOG(INFO) << "The number of searching calls = " << nofSearchingCalls;
     LOG(INFO) << "The measured time in ms = " << ms;
     print_dfa();
