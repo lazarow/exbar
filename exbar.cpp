@@ -9,10 +9,7 @@ INITIALIZE_EASYLOGGINGPP
 
 int nofSearchingCalls = 0; // the number of `exh_search` calls
 
-std::ofstream graphmlOut("test.graphml");
-
-void walkit(int redNode, int blueNode, int &nofChanges)
-{
+void walkit(int redNode, int blueNode, int &nofChanges) {
     if (apta.nodes[blueNode]->label != LABEL_NONE) {
         if (apta.nodes[redNode]->label != LABEL_NONE) {
             if (apta.nodes[redNode]->label != apta.nodes[blueNode]->label) {
@@ -89,43 +86,36 @@ int pickBlueNode() {
 
 int maxRed = 1;
 int bestSolutionNofRedNodes = INT_MAX;
-string solutionDfa = "";
+string bestSolutionStringDfa = "";
 
 void exh_search() {
     if (getNumberOfRedNodes() <= maxRed) {
         nofSearchingCalls++;
-        LOG(DEBUG) << "Looking for the best possible blue node";
-        //getchar();
+        LOG(DEBUG) << "Looking for the best possible blue node...";
         int blueNode = pickBlueNode();
-        LOG(DEBUG) << "The blue node has been picked: node #" << blueNode;
-        //getchar();
+        LOG(DEBUG) << "The blue node has been picked: " << blueNode;
         if (blueNode != -1) {
-            for (int i = 0; i < apta.nodes.size(); ++i) { // try all red nodes
+            // try all red nodes
+            for (int i = 0; i < apta.nodes.size(); ++i) {
                 if (apta.nodes[i]->color == COLOR_RED) {
                     int nofChanges = 0;
                     if (try_merge(i, blueNode, nofChanges)) {
-                        //getchar();
                         nofChanges += set_as_merged(blueNode);
-                        LOG(DEBUG) << "Recurse call after the merge";
                         exh_search();
                     }
-                    LOG(DEBUG) << "Reverting changes";
                     undo_changes(nofChanges);
                 }
             }
-            LOG(DEBUG) << "No merge possible for the picked blue node";
             apta.nodes[blueNode]->color = COLOR_RED;
-            //getchar();
-            exh_search();
-        } else { // no more blue nodes
-            throw 1;
+            throw 1; // exit, the new red node has been found
+        } else {
+            // no more blue nodes
             // save the solution
-            /*if (getNumberOfRedNodes() < bestSolutionNofRedNodes) {
+            if (getNumberOfRedNodes() < bestSolutionNofRedNodes) {
                 LOG(INFO) << "The solution has been found";
-                getchar();
                 bestSolutionNofRedNodes = getNumberOfRedNodes();
-                solutionDfa = get_dfa(false);
-            }*/
+                bestSolutionStringDfa = get_dfa(false);
+            }
         }
     }
 }
@@ -138,18 +128,17 @@ int main(int argc, char* argv[])
     string filepath = getCmdOption(argv, argv + argc, "--file");
     build_APTA_from_file(filepath);
     LOG(INFO) << "[ exbar ]";
-    graphmlOut << get_graphml_header();
     //---
     clock_t time = clock();
     apta.nodes[0]->color = COLOR_RED;
-    while (true) {
+    while (getNumberOfRedNodes() < apta.nodes.size()) {
         try {
             exh_search();
-            maxRed++;
         } catch (int e) {
-            LOG(INFO) << "The solution has been found";
             break;
         }
+        maxRed++;
+        LOG(INFO) << "The new red node has been found, the max red: " << maxRed;
     }
     time = clock() - time;
     int ms = time / CLOCKS_PER_SEC * 1000;
@@ -160,9 +149,6 @@ int main(int argc, char* argv[])
     print_dfa();
     //---
     LOG(INFO) << "Saving the generated DFA to files";
-    graphmlOut << get_graphml_dfa();
-    graphmlOut << get_graphml_footer();
-    graphmlOut.close();
     std::ofstream out1("dfa.txt");
     out1 << get_dfa(false);
     out1.close();
