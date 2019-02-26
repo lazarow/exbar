@@ -302,6 +302,12 @@ int set_as_merged(int nodeIndex) {
     return 1;
 }
 
+int set_color(int nodeIndex, int color) {
+    changes.push(make_tuple(nodeIndex, "color", apta.nodes[nodeIndex]->color, -1));
+    apta.nodes[nodeIndex]->color = color;
+    return 1;
+}
+
 int set_father_point(int redIndex, int blueIndex) {
     int nofChanges = 0;
     for (int i = 0; i < apta.nodes.size(); ++i) {
@@ -315,7 +321,7 @@ int set_father_point(int redIndex, int blueIndex) {
 }
 
 void undo_changes(int nofChanges) {
-    while (nofChanges > 0) {
+    while (nofChanges > 0 && changes.size() > 0) {
         tuple<int, string, int, int> change = changes.top(); changes.pop();
         if (get<1>(change) == "label") {
             apta.nodes[get<0>(change)]->label = get<2>(change);
@@ -323,6 +329,8 @@ void undo_changes(int nofChanges) {
             apta.nodes[get<0>(change)]->children[get<3>(change)] = get<2>(change);
         } else if (get<1>(change) == "merged") {
             apta.nodes[get<0>(change)]->isMerged = false;
+        } else if (get<1>(change) == "color") {
+            apta.nodes[get<0>(change)]->color = get<2>(change);
         }
         nofChanges--;
     }
