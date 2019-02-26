@@ -131,7 +131,7 @@ int main(int argc, char* argv[])
     el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Format, "[%datetime] %msg");
     // the algorithm starts here
     string filepath = getCmdOption(argv, argv + argc, "--file");
-    max_red = atoi(getCmdOption(argv, argv + argc, "--max"));
+    max_red = atoi(getCmdOption(argv, argv + argc, "--limit"));
     if (max_red < 1) {
         max_red = 1;
     }
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
         }
     }
     time = clock() - time;
-    int ms = time / CLOCKS_PER_SEC * 1000;
+    int ms = (float) time / CLOCKS_PER_SEC * 1000;
     //---
     LOG(INFO) << "[ RESULT ]";
     LOG(INFO) << "The measured time in ms = " << ms;
