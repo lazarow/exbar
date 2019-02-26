@@ -131,6 +131,10 @@ int main(int argc, char* argv[])
     el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Format, "[%datetime] %msg");
     // the algorithm starts here
     string filepath = getCmdOption(argv, argv + argc, "--file");
+    max_red = atoi(getCmdOption(argv, argv + argc, "--max"));
+    if (max_red < 1) {
+        max_red = 1;
+    }
     build_APTA_from_file(filepath);
     LOG(INFO) << "[ exbar ]";
     //---

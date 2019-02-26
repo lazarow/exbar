@@ -22,9 +22,10 @@ g++ exbar.cpp libraries/easylogging/easylogging++.cc -std=c++11 -DELPP_DISABLE_D
 ## Uruchomienie
 
 ```
-exbar --file {ścieżka do pliku wejściowego} [--verify]
+exbar --file {ścieżka do pliku wejściowego} [--verify] [--max {początkowa liczba stanów, domyślnie 1}]
 ```
 Dodanie parametru `--verify` uruchomi weryfikację wygenerowanego zminimalizowanego DFA za pomocą przykładów i kontrprzykładów z pliku wejściowego.
+Dodanie parametru `--max` umożliwia ustawienie liczby stanów, od której algorytm zaczyna przeszukiwanie, domyślnie jest to `1`.
 
 ## Format pliku wejściowego
 
