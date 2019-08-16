@@ -128,10 +128,16 @@ void exh_search() {
 int main(int argc, char* argv[])
 {
     START_EASYLOGGINGPP(argc, argv);
+    InputParser input(argc, argv);
     el::Loggers::reconfigureAllLoggers(el::ConfigurationType::Format, "[%datetime] %msg");
     // the algorithm starts here
-    string filepath = getCmdOption(argv, argv + argc, "--file");
-    max_red = atoi(getCmdOption(argv, argv + argc, "--limit"));
+    const string &filepath = input.getCmdOption("--file");
+    const string &max_red_str = input.getCmdOption("--limit");
+    if (! max_red_str.empty()) {
+        max_red = stoi(max_red_str);
+    }
+    //string filepath = getCmdOption(argv, argv + argc, "--file");
+    //max_red = atoi(getCmdOption(argv, argv + argc, "--limit"));
     if (max_red < 1) {
         max_red = 1;
     }
