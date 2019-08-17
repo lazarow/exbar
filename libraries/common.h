@@ -16,7 +16,7 @@ vector<int> split(string input)
             buffer = "";
         }
     }
-    if (buffer != "") {
+    if (buffer != "" && buffer != "\r") {
         output.push_back(stoi(buffer));
     }
     return output;
