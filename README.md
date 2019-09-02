@@ -1,7 +1,7 @@
 # exbar
 
-The implementation of the algorithm `exbar` based on the article !(__Faster Algorithms for
-Finding Minimal Consistent DFAs__)[https://pdfs.semanticscholar.org/f74c/5462cec67439490bf73f652ecd7d5f3f2679.pdf].
+The implementation of the algorithm `exbar` based on the article [__Faster Algorithms for
+Finding Minimal Consistent DFAs__](https://pdfs.semanticscholar.org/f74c/5462cec67439490bf73f652ecd7d5f3f2679.pdf).
 
 The application should be compiled without any problems with G++ or MinGW. 
 Program powinien bez większych problemów skompilować za pomocą G++ lub MinGW. Depending on the arguments, the program will be display full or simplified logs.
