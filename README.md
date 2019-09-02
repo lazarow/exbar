@@ -1,40 +1,41 @@
 # exbar
 
-Implementacja algorytmu `exbar` opisanego w artykule __Faster Algorithms for
-Finding Minimal Consistent DFAs__.
+The implementation of the algorithm `exbar` based on the article (__Faster Algorithms for
+Finding Minimal Consistent DFAs__)[https://pdfs.semanticscholar.org/f74c/5462cec67439490bf73f652ecd7d5f3f2679.pdf].
 
-Program powinien bez większych problemów skompilować za pomocą G++ lub MinGW. W zależności od argumentów przekazanych do kompilatora program będzie wyświetlał pełne lub uproszczone logi.
+The application should be compiled without any problems with G++ or MinGW. 
+Program powinien bez większych problemów skompilować za pomocą G++ lub MinGW. Depending on the arguments, the program will be display full or simplified logs.
 
-Uwaga! Niniejsza implementacja operuje tylko na liczbach (czy inaczej indeksach znaków).
+Beware, this implementation works only on integers (characters indices).
 
-## Kompilacja
+## Compilation
 
-Kompilacja z pełnymi logami:
+The compilation with full logs:
 ```
 g++ exbar.cpp libraries/easylogging/easylogging++.cc -std=c++11
 ```
 
-Kompilacja z uproszczonymi logami:
+The compilation with simplified logs:
 ```
 g++ exbar.cpp libraries/easylogging/easylogging++.cc -std=c++11 -DELPP_DISABLE_DEBUG_LOGS
 ```
 
-## Uruchomienie
+## Executing
 
 ```
-exbar --file {ścieżka do pliku wejściowego} [--verify] [--limit {początkowa liczba stanów, domyślnie 1}]
+exbar --file {input file path} [--verify] [--limit 1]
 ```
-Dodanie parametru `--verify` uruchomi weryfikację wygenerowanego zminimalizowanego DFA za pomocą przykładów i kontrprzykładów z pliku wejściowego.
-Dodanie parametru `--limit` umożliwia ustawienie liczby stanów, od której algorytm zaczyna przeszukiwanie, domyślnie jest to `1`.
+If you add the `--verify` parameter, then generated DFA will be checked with the input file's examples and counterexamples.
+The `--limit` parameter sets the starting limit for the maximum number of red nodes, the default value is 1.
 
-## Format pliku wejściowego
+## Input file format
 
 ```
-{liczba przykładów} {rozmiar słownika}
-{pojedynczy przykład: {akceptowany/nieakceptowany} {liczba znaków w słowie} {indeksy znaków oddzielone spacją}}
+{The number of examples} {The size of dictionary}
+{example: {is accepted} {the number of characters in a word} {indices separated with space}}
 ```
 
-Przykład 1:
+Example 1:
 ```
 5 2
 1 1 1
@@ -44,7 +45,7 @@ Przykład 1:
 0 1 0
 ```
 
-Przykład 2:
+Example 2:
 ```
 8 2
 1 11 0 0 1 0 0 0 0 0 1 0 0
@@ -57,23 +58,23 @@ Przykład 2:
 0 15 1 1 0 0 1 1 0 1 1 1 1 0 0 1 0
 ```
 
-## Format pliku wyściowego
+## Output file format
 
-Program generuje zminimalizowany DFA do dwóch plików wyjściowych różniących się formatem - pliki nazywają się `dfa.txt` oraz `dfa.yaml`.
+The application will generate a minified DFA as two files:  `dfa.txt` and `dfa.yaml`.
 
-### Pierwszy format (txt)
+### First file (txt)
 
 ```
-{liczba stanów}
-{rozmiar alfabetu}
-{liczba stanów akceptujących stany akceptujące}
-{liczba stanów nieakceptujących stany nieakceptujące}
-{przejścia dla stanu 0 w kolejności indeksów znaków alfabetu}
-{przejścia dla stanu 1 w kolejności indeksów znaków alfabetu}
+{the numberf of states}
+{the size of alphabet}
+{the number of accept states} {accept states}
+{the number of reject states} {reject states}
+{transitions for the state 0 in order of the alphabet's characters indices}
+{transitions for the state 1 in order of the alphabet's characters indices}
 ...
 ```
 
-Przykład:
+Example:
 ```
 3
 2
@@ -84,9 +85,9 @@ Przykład:
 2 0
 ```
 
-### Pierwszy format (yaml)
+### Second file (yaml)
 
-Przykład:
+Example:
 ```
 number of states: 3
 size of alphabet: 2
@@ -99,8 +100,8 @@ transitions:
 - [2, 2, 0]
 ```
 
-## Szybki start
+## Quickstart
 
 ```
-g++ exbar.cpp libraries/easylogging/easylogging++.cc -std=c++11 -DELPP_DISABLE_DEBUG_LOGS && ./a.out --file samples/sample1.txt
+g++ exbar.cpp libraries/easylogging/easylogging++.cc -std=c++11 -DELPP_DISABLE_DEBUG_LOGS && ./a.out --file test/sample1.txt
 ```
