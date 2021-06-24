@@ -59,7 +59,7 @@ Example 2:
 
 ## Output file format
 
-The application will generate a minified DFA as two files:  `dfa.txt` and `dfa.yaml`.
+The application will generate a minified DFA as two files:  `dfa.txt` and `dfa.yaml`. In states transisions, there are lists of succeeding states indices, where the value -1 means there is no transition.
 
 ### First file (txt)
 
